@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>NMAP Parser</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family:"Nunito", sans-serif;
+            background: #344a72;
+            color: #fff;
+            line-height: 1.8;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        #container {
+            margin: 30px auto;
+            max-width: 400px;
+            padding: 20px;
+        }
+
+        .form-wrap {
+            background: #fff;
+            padding: 15px 25px 30px;
+            color: #333;
+            border-radius: 5px;
+        }
+
+        .form-wrap h1,
+        .form-wrap p {
+            text-align: center;
+        }
+
+        .form-wrap .form-group {
+            margin-top: 15px;
+        }
+
+        .form-wrap .form-group label {
+            color: #333;
+            font-weight: normal;
+        }
+
+        .form-wrap .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: #707070 1px solid;
+            border-radius: 5px;
+            font-family: inherit;
+            font-size: inherit;
+            caret-color: #49c1a2;
+        }
+
+        .form-wrap .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: #707070 1px solid;
+            border-radius: 5px;
+            font-family: inherit;
+            font-size: inherit;
+            caret-color: #49c1a2;
+        }
+
+        .form-wrap .form-group input:focus {
+            outline-color: #49c1a2;
+        }
+
+        .form-wrap .btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 25px;
+            background: #49c1a2;
+            color: #fff;
+            cursor: pointer;
+            border: #49c1a2 1px solid;
+            border-radius: 5px;
+            font-family: inherit;
+            font-size: inherit;
+        }
+
+        .form-wrap .btn:hover {
+            background: #37a08e;
+            color: #f4f4f4;
+        }
+
+        .form-wrap .btn:focus {
+            outline-color: #37a08e;
+        }
+
+        .form-wrap .bottom-text {
+            line-height: 1.4;
+            margin-top: 15px;
+        }
+
+        .form-wrap .bottom-text a:hover {
+            text-decoration: underline;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        footer a {
+            color: #49c1a2;
+        }
+
+        footer a:hover {
+            color: #37a08e;
+        }
+    </style>
+    <script>
+        function toggleTextbox() {
+			var select = document.getElementById("scanme");
+            if (select.value != "") {
+                var choice = document.getElementById("choice");
+                choice.style.display = "block";
+            }
+            else {
+                var choice = document.getElementById("choice");
+                choice.style.display = "none";
+            }
+			if (select.value === "-sI") {
+                var textbox = document.getElementById("textbox2");
+                textbox.style.display = "none";
+                var textbox = document.getElementById("textbox");
+				textbox.style.display = "block";
+			} 
+            else if (select.value === "-b") {
+                var textbox = document.getElementById("textbox2");
+                textbox.style.display = "block";
+                var textbox = document.getElementById("textbox");
+				textbox.style.display = "none";
+            }
+            else {
+                var textbox = document.getElementById("textbox2");
+				textbox.style.display = "none";
+                var textbox = document.getElementById("textbox");
+                textbox.style.display = "none";
+			}
+                
+		}
+        function toggleTextareaForPorts() {
+			var textbox = document.getElementById("textarea");
+			var select = document.getElementById("portscan");
+			if (select.value === "-p") {
+				textbox.style.display = "block";
+			} else {
+				textbox.style.display = "none";
+			}
+		}
+        function validateTextarea() {
+        const textarea = document.getElementById("ports");
+        const value = textarea.value;
+        const regex = /^[0-9,-]+$/;
+        const isValid = regex.test(value);
+        const error = document.getElementById("error");
+        
+        if (isValid) {
+            error.textContent = "";
+        } else {
+            error.textContent = "Please enter only numbers and commas !!!";
+        }
+        }
+
+    </script>
+</head>
+
+<body>
+    <div id="container">
+        <div class="form-wrap">
+            <h1>NMAP Parser</h1>
+            <form name="myform" enctype="multipart/form-data" action="/backend" method="post">
+                <b style="color: red;"><h4>CAUTION</h4></b>
+                <b><div style="color: red; padding-left:15px;">
+                <ol>
+                    <li>Check connection before inserting IPv6 IP Addresses</li>
+                    <li>Do not enter more than 10 lakh IP addresses !!!</li>
+                    <li>Entering custom command will null everything in form except input file CSV</li>
+                </ol></div></b>
+
+                <div class="form-group">
+                    <label for="extra">Format -> <b>nmap -A -sV -p 22,80 -T3 -Pn</b><br>No need to enter input (-iL) or output (-oA)</label>
+                    <h4>ENTER CUSTOM COMMANDS</h4>
+                    <input type="text" name="extra" id="extra">
+                </div>
+                <label><input type="checkbox" value="ping" name="customping"> <b>PING SCAN + CUSTOM COMMAND</b></label>
+
+                <div class="form-group">
+                    <h4>INPUT CSV FILE</h4>
+                    <label for="input-file">Supports IPv4, IPv6, IPv4/IPv6<br>Supports Individual IP, Subnets, Ranges<br>Range Format -> 10.9.10.1 - 10.9.10.10</label>
+                    <input type="file" name="inputFile" id="input-file">
+                </div>
+
+            <!--
+                <div class="form-group">
+                    <label for="first-name">First Name</label>
+                    <input type="text" name="firstName" id="first-name" required>
+                </div>
+            -->
+
+                <div class="form-group">
+                    <h4>CHOOSE SCAN TECHNIQUE</h4>
+                    <label for="scanme">Supports Ping Scans & Port Scans</label>
+                    <select name="scanme" id="scanme" onchange="toggleTextbox()">
+                        <option value="">Ping Scan Only (-sn -PE)</option>
+                        <option value="-sS">TCP SYN Stealth Scan ( -sS ) </option>
+                        <option value="-sT">TCP Connect Scan ( -sT ) </option>
+                        <option value="-sA">TCP ACK Scan ( -sA ) </option>
+                        <option value="-sW">TCP Window Scan ( -sW ) </option>
+                        <option value="-sM">TCP Maimon Scan ( -sM ) </option>
+                        <option value="-sN">TCP Null Scan ( -sN ) </option>
+                        <option value="-sF">TCP FIN Scan ( -sF ) </option>
+                        <option value="-sX">TCP Xmas Scan ( -sX ) </option>
+                        <option value="-sI">TCP Idle Scan ( -sI ) </option>
+                        <option value="-b">FTP Bounce Scan ( -b ) </option>
+                    </select>
+                </div>
+
+                <br>
+
+                <label><input type="checkbox" value="-sU"  name="udp">  UDP Scan (-sU) </label><br>
+
+                <label><input type="checkbox" value="-A"  name="basic">  Basic Scan (-A) </label><br>
+                
+                <label><input type="checkbox" value="-sY"  name="sctp-init">  SCTP INIT Scan (-sY) </label><br>
+                
+                <label><input type="checkbox" value="-sZ"  name="sctp-cookie">  SCTP COOKIE-ECHO Scan (-sZ) </label><br>
+
+                <div class="form-group" id="textbox" style="display: none;">
+                    <label for="zombie">Zombie Host</label>
+                    <input type="text" id="zombieName" name="zombieName"  />
+                </div>
+
+                <div class="form-group" id="textbox2" style="display: none; padding-bottom: 10px;">
+                    <label for="ftpHost">FTP Relay Host</label>
+                    <input type="text" id="ftpHost" name="ftpHost"  />
+                </div>
+                <div id="choice" style="display:none;">
+                    <h4>SELECT YOUR ORDER OF SCANNING</h4>
+                    <label>Extra time for Ping Scanning may apply in first option</label><br>
+                <input type="radio" name="choice" value="both">
+                <label for="both"><b>PING + PORT SCAN</b></label><br>
+                <input type="radio" name="choice" value="direct" checked>
+                <label for="direct" ><b>DIRECT PORT SCAN</b></label><br>
+                </div>
+
+                <div class="form-group">
+                    <label for="portscan"><h4>CHOOSE PORTS TO SCAN</h4> </label>
+                    <select name="portscan"  id="portscan" onchange="toggleTextareaForPorts()">
+                        <option value="-p 21,139,137,445,389,3389,1521,49,636,25,8081,7777,7,22,23,80,111,161,383,443,862,1002,1344,2301,2381,3128,6666,8000,8080,8181,8443,15062,15100,16138,20837,21415,21783,22619,23037,24446,24488,26210,28281,29754,29755,31728,32783,33335,36969,36999,37322,37483,38303,38966,41385,42110,46748,47630,50572,51490,51859,52085,52185,53363,53396,53701,54153,54268,54531,56200">Popular Pentest Ports</option>
+                        <option value="-p-">Scan All Ports (-p-) </option>
+                        <option value="-p">Port Input (Eg. -p21, -p1-200) </option>
+                        <option value="--top-ports 1000">Top 1000 Ports (--top-ports 1000) </option>
+                        <option value="-F">Fast Mode (-F) </option>
+                    </select>
+                </div>
+            
+                <div class="form-group" id="textarea" style="display:none;" >
+                    <label for="ports">Enter your Ports / Port Range <br>Expected Input -> 21,22,23-25</label>
+                    <textarea name="ports" id="ports" cols="39" rows="4" oninput="validateTextarea()"></textarea>
+                </div>
+            
+                <b><div style="color: red;" id="error"></div></b>
+        
+                <div class="form-group">
+                    <label for="quantity"><h4>CHOOSE TIMING TEMPLATE</h4>NMAP Command -> -T<0-5></label>
+                    <select name="quantity" id="quantity">
+                        <option value="-T0">T0</option>
+                        <option value="-T1">T1</option>
+                        <option value="-T2">T2</option>
+                        <option value="-T3" selected>T3 (Default Option on NMAP)</option>
+                        <option value="-T4">T4</option>
+                        <option value="-T5">T5</option>
+                    </select>
+                </div>
+                <div class="form-group" style="padding-bottom: 15px;">
+                    <h4>RESOURCE UTILISATION OF DEVICE</h4>
+                    <label for="power">Time taken for scan and resource utilisation are inversely proportional</label>
+                    <select name="power" id="power">
+                        <option value="20">Very Low Processing Scan (20) </option>
+                        <option value="30" selected>Intermediate Processing Scan (30) </option>
+                        <option value="40"> High Processing Scan (40) </option>
+                    </select>
+                </div>
+                <div>
+                    <h4>SCAN FOR VULNERABILITIES?</h4>
+                    <input type="checkbox" id="vuln" name="vuln" value="True">&nbsp;Enable Vulners ?</input>
+                </div>
+                
+                <button type="submit" class="btn">Start</button>
+            </form>
+        </div>
+
+    </div>
+</body>
+
+</html>
