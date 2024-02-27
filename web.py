@@ -17,12 +17,22 @@ from datetime import datetime
 import csv
 import sys
 import xml.etree.ElementTree as ET
-from tqdm import tqdm
 
 app = Flask(__name__)
 
-# OPENS A NEW TAB OPENING THE PAGE FOR NMAP FORM
+def remove_empty(command):
 
+    command_list = [i for i in command if i != '']
+    
+    result_list = []
+    for item in command_list:
+        if ' ' in item:
+            split_items = item.split(' ') 
+            result_list.extend(split_items)
+        else:
+            result_list.append(item)
+
+    return result_list
 
 def openBrowser():
     if os.path.exists("port.txt"):
@@ -53,6 +63,7 @@ def worker(filename, params):
             ip_addr_list.append(ip)
 
     if len(ip_addr_list) > 1000000:
+        
         print("YOU HAVE ENTERED OVER 1 LAKH IP ADDRESSES. SHUTTING DOWN !!!")
         time.sleep(60)
         os._exit(0)
@@ -92,39 +103,45 @@ def customNMAP(params, ip_addr_list, pingval):
     executor2 = ThreadPoolExecutor(max_workers=int(params["Batches"]))
 
     if pingval == True:
-        # print("123")
-        with tqdm(total=len(ip_addr_list), desc="PING PROGRESS", unit="ip") as pbar:
-            for ip in ip_addr_list:
-                future = executor.submit(pingme, ip)
-                futures.append(future)
+        
+        # with tqdm(total=len(ip_addr_list), desc="PING PROGRESS", unit="ip") as pbar:
+        
+        for ip in ip_addr_list:
+            future = executor.submit(pingme, ip)
+            futures.append(future)
 
-            for future, ip in zip(futures, ip_addr_list):
-                result = future.result()
-                post_proc_func(ip, result)
-                if result[0] == True:
-                    new_ip_addr_list.append(str(ip))
-                pbar.update(1)
+        for future, ip in zip(futures, ip_addr_list):
+            result = future.result()
+            post_proc_func(ip, result)
+            if result[0] == True:
+                new_ip_addr_list.append(str(ip))
+                
+                # pbar.update(1)
+            
+        # with tqdm(total=len(new_ip_addr_list), desc="NMAP PROGRESS", unit="ip") as pbar:
 
-        with tqdm(total=len(new_ip_addr_list), desc="NMAP PROGRESS", unit="ip") as pbar:
-            for ip in new_ip_addr_list:
-                future2 = executor2.submit(custom_nmapfunc, ip, params)
-                nmap_futures.append(future2)
+        for ip in new_ip_addr_list:
+            future2 = executor2.submit(custom_nmapfunc, ip, params)
+            nmap_futures.append(future2)
 
-            for future2, ip in zip(nmap_futures, new_ip_addr_list):
-                result = future2.result()
-                post_proc_func(ip, result)
-                pbar.update(1)
+        for future2, ip in zip(nmap_futures, new_ip_addr_list):
+            result = future2.result()
+            post_proc_func(ip, result)
+                
+                # pbar.update(1)
     else:
-        # print("456")
-        with tqdm(total=len(ip_addr_list), desc="NMAP", unit="ip") as pbar:
-            for ip in ip_addr_list:
-                future = executor.submit(custom_nmapfunc, ip, params)
-                futures.append(future)
+        
+        # with tqdm(total=len(ip_addr_list), desc="NMAP PROGRESS", unit="ip") as pbar:
+        
+        for ip in ip_addr_list:
+            future = executor.submit(custom_nmapfunc, ip, params)
+            futures.append(future)
 
-            for future, ip in zip(futures, ip_addr_list):
-                result = future.result()
-                post_proc_func(ip, result)
-                pbar.update(1)
+        for future, ip in zip(futures, ip_addr_list):
+            result = future.result()
+            post_proc_func(ip, result)
+            
+                # pbar.update(1)
 
 
 def custom_nmapfunc(ip, params):
@@ -142,6 +159,7 @@ def custom_nmapfunc(ip, params):
 
 
 def changeParams(params):
+    
     params["Extra"] = emptyval(params["Extra"])
     if str(params["Extra"]) == "":
         params["Zombie"] = emptyval(params["Zombie"])
@@ -166,34 +184,24 @@ def changeParams(params):
         pass
     return params
 
-# REMOVE ARGUMENTS THAT HAVE NONE AS VALUE
-
-
 def emptyval(val):
     if val == None or val == "None":
         return ""
     else:
         return val
 
-# FORM PAGE
-
-
 @app.route('/')
 def formPage():
     return render_template('index.html')
 
-# EXTRACT INDIVIDUAL IP ADDRESSES FROM SUBNET
-
-
 def subnetExtract(line):
-    # print("EXTRACTING IP ADDRESSES FROM SUBNETS")
+
     ip_addr_list = []
 
     if ':' in str(line):
         subnet = ipaddress.IPv6Network(str(line).strip(), False)
-        # print(str(line).strip())
+
         for ip in subnet.hosts():
-            # print(ip)
             ip_addr_list.append(ip)
     else:
         subnet = ipaddress.ip_network(str(line).strip(), False)
@@ -202,11 +210,8 @@ def subnetExtract(line):
 
     return ip_addr_list
 
-# EXTRACT INDIVIDUAL IP ADDRESSES FROM RANGE
-
-
 def rangeExtract(line):
-    # print("EXTRACTING IP ADDRESSES FROM RANGE")
+
     ip_addr_list = []
     rangeList = line.split("-")
 
@@ -224,9 +229,6 @@ def rangeExtract(line):
             ip_addr_list.append(ip_addr)
     return ip_addr_list
 
-# THE BACKEND THAT ACTIVATES AFTER FILLING FORM
-
-
 @app.route('/backend', methods=['POST'])
 def backendPage():
 
@@ -240,9 +242,8 @@ def backendPage():
             'Choice': request.values.get('choice'),
             'Ping': request.values.get('customping')
         }
-        # print(params["Extra"])
+
     else:
-        # print("ACTUAL PARAMS")
         params = {
             'Technique': request.values.get('scanme'),
             'Zombie': request.values.get('zombieName'),
@@ -269,7 +270,7 @@ def backendPage():
     if os.path.exists("offline_ip_addresses.csv"):
         os.remove("offline_ip_addresses.csv")
 
-    executor2 = ThreadPoolExecutor(max_workers=40)
+    executor2 = ThreadPoolExecutor(max_workers=10)
     future = executor2.submit(removeRESULT)
     future.result()
 
@@ -287,16 +288,6 @@ def removeRESULT():
         os.mkdir("results")
     else:
         os.mkdir("results")
-
-# def threadme(ip_addr_list,params):
-#     with tqdm(total=len(ip_addr_list), desc="Nmap Progress", unit="ip") as pbar:
-
-#         futures = [ for ip in ip_addr_list]
-
-#         for future in futures:
-#             result = future.result()
-#             pbar.update(1)
-
 
 def post_proc_func(ip, result):
     if result[0] == None or str(result[0]) == "None":
@@ -323,7 +314,7 @@ def post_proc_func(ip, result):
                 data = {'IP Address': [str(ip)]}
                 df = pd.DataFrame(data)
                 df.to_csv('live_ip_addresses.csv', index=False)
-        # print(result[1])
+
         if result[0] == True and result[1] == "port":
             direct = str(ip).replace(":", "_")
             csv_direct = str(direct) + ".csv"
@@ -337,9 +328,6 @@ def post_proc_func(ip, result):
             except Exception as e:
                 os.remove(os.path.join("results", str(csv_direct)))
 
-# NMAP PARSING FUNCTION
-
-
 def parseNMAP(params, ip_addr_list):
 
     params = changeParams(params)
@@ -350,49 +338,55 @@ def parseNMAP(params, ip_addr_list):
     executor2 = ThreadPoolExecutor(max_workers=int(params["Batches"]))
 
     if params["Choice"] == "direct":
-        # print("WHY")
-        with tqdm(total=len(ip_addr_list), desc="NMAP", unit="ip") as pbar:
+        
+        # with tqdm(total=len(ip_addr_list), desc="NMAP", unit="ip") as pbar:
 
-            for ip in ip_addr_list:
-                future = executor.submit(proc, ip, params)
-                futures.append(future)
+        for ip in ip_addr_list:
+            future = executor.submit(proc, ip, params)
+            futures.append(future)
 
-            for future, ip in zip(futures, ip_addr_list):
-                result = future.result()
-                post_proc_func(ip, result)
-                pbar.update(1)
+        for future, ip in zip(futures, ip_addr_list):
+            result = future.result()
+            post_proc_func(ip, result)
+
+                # pbar.update(1)
 
     elif params["Choice"] == "both":
-        with tqdm(total=len(ip_addr_list), desc="PING PROGRESS", unit="ip") as pbar:
-            for ip in ip_addr_list:
-                future = executor.submit(pingme, ip)
-                futures.append(future)
+        
+        # with tqdm(total=len(ip_addr_list), desc="PING PROGRESS", unit="ip") as pbar:
+        
+        for ip in ip_addr_list:
+            future = executor.submit(pingme, ip)
+            futures.append(future)
 
-            for future, ip in zip(futures, ip_addr_list):
-                result = future.result()
-                post_proc_func(ip, result)
-                if result[0] == True:
-                    new_ip_addr_list.append(str(ip))
-                pbar.update(1)
+        for future, ip in zip(futures, ip_addr_list):
+            result = future.result()
+            post_proc_func(ip, result)
+            if result[0] == True:
+                new_ip_addr_list.append(str(ip))
+                
+                # pbar.update(1)
 
         futures = []
-        with tqdm(total=len(new_ip_addr_list), desc="NMAP PROGRESS", unit="ip") as pbar:
-            for ip in new_ip_addr_list:
-                future = executor2.submit(nmapfunc, ip, params)
-                futures.append(future)
+        
+        # with tqdm(total=len(new_ip_addr_list), desc="NMAP PROGRESS", unit="ip") as pbar:
+        
+        for ip in new_ip_addr_list:
+            future = executor2.submit(nmapfunc, ip, params)
+            futures.append(future)
 
-            for future, ip in zip(futures, new_ip_addr_list):
-                result = future.result()
-                post_proc_func(ip, result)
-                pbar.update(1)
+        for future, ip in zip(futures, new_ip_addr_list):
+            result = future.result()
+            post_proc_func(ip, result)
+            
+                # pbar.update(1)
 
     end_time = time.time()
     time_taken = end_time - start_time
-    # print("TOTAL TIME FOR PROCESSING - "+str(time_taken))
 
 
 def pingme(ip):
-    # print("YO")
+    
     if ipaddress.ip_address(str(ip).strip()).version == 4:
         command = "nmap -sn "+str(ip)
     if ipaddress.ip_address(str(ip).strip()).version == 6:
@@ -408,45 +402,55 @@ def pingme(ip):
 
 
 def nmapfunc(ip, params):
-    # print("WHYYYYYYYY")
+
     direct = str(ip).replace(":", "_")
     try:
         os.mkdir(os.path.join("results", str(direct)))
     except:
         pass
+
     big_statement = str(params["Basic"])+" "+str(params["Technique"])+" "+str(params["Zombie"])+str(params["FTP"])+" "+str(
         params["UDP"])+" "+str(params["SCTP_INIT"])+" "+str(params["SCTP_COOKIE"])+" "+str(params["HOST_DISCO"])
 
+    loc = os.path.join(str(direct), str(direct))
+    
     if ipaddress.ip_address(str(ip).strip()).version == 4:
-        command = "nmap -n "+str(params["Vulners"])+" --open --min-parallelism 10 "+" -sV -Pn "+str(params["Timing"])+" "+str(
-            big_statement)+" "+str(params["PortTechnique"])+" "+str(params["PortText"])+" -oA "+str(direct)+" " + str(ip)
+        command = ["nmap", "-n", str(params["Vulners"]), "--open", "--min-parallelism", "10", "-sV", "-Pn", str(params["Timing"]), str(params["Basic"]), str(params["Technique"]), str(params["Zombie"]), str(params["FTP"]), str(
+            params["UDP"]), str(params["SCTP_INIT"]), str(params["SCTP_COOKIE"]), str(params["HOST_DISCO"]), str(params["PortTechnique"]), str(params["PortText"]), "-oA", str(loc), str(ip)]
+
     if ipaddress.ip_address(str(ip).strip()).version == 6:
-        command = "nmap -6 -n "+str(params["Vulners"])+" --open --min-parallelism 10 "+" -sV -Pn "+str(params["Timing"])+" "+str(
-            big_statement)+" "+str(params["PortTechnique"])+" "+str(params["PortText"])+" -oA "+str(direct)+" " + str(ip)
+        command = ["nmap", "-6", "-n", str(params["Vulners"]), "--open", "--min-parallelism", "10", "-sV", "-Pn", str(params["Timing"]), str(params["Basic"]), str(params["Technique"]), str(params["Zombie"]), str(params["FTP"]), str(
+            params["UDP"]), str(params["SCTP_INIT"]), str(params["SCTP_COOKIE"]), str(params["HOST_DISCO"]), str(params["PortTechnique"]), str(params["PortText"]), "-oA", str(loc), str(ip)]
 
     process = subprocess.run(
         command, capture_output=True, text=True, cwd="results")
     a = process.stdout
     if "down" in str(a).split() or "down" in str(a):
         return (False, "port")
+    
     elif "Host is up" in str(a).split() or "Host is up" in str(a) or "1 host up" in str(a):
         return (True, "port")
+    
     else:
         return (False, "port")
 
 
 def proc(ip, params):
+    
     direct = str(ip).replace(":", "_")
     big_statement = str(params["Basic"])+" "+str(params["Technique"])+" "+str(params["Zombie"])+str(params["FTP"])+" "+str(
         params["UDP"])+" "+str(params["SCTP_INIT"])+" "+str(params["SCTP_COOKIE"])+" "+str(params["HOST_DISCO"])
-    # print(big_statement)
+
     if len(str(big_statement).strip()) == 0 or big_statement == "None" or str(big_statement) == "None":
+        
         if ipaddress.ip_address(str(ip).strip()).version == 4:
-            command = "nmap -sn "+str(ip)
+            command = ["nmap", "-sn", str(ip)]
         if ipaddress.ip_address(str(ip).strip()).version == 6:
-            command = "nmap -sn -6 "+str(ip)
+            command = ["nmap", "-sn", "-6", str(ip)]
+        
         process = subprocess.run(
             command, capture_output=True, shell=True, text=True)
+        
         if "down" in str(process.stdout).split() or "down" in str(process.stdout):
             return (False, "ping")
         elif "Host is up" in str(process.stdout).split() or "Host is up" in str(process.stdout) or "1 host up" in str(process.stdout):
@@ -459,26 +463,39 @@ def proc(ip, params):
             os.mkdir(os.path.join("results", str(direct)))
         except:
             pass
-        # loc = str(direct)+"/"+str(direct)
-        loc = os.path.join(str(direct),str(direct))
+
+        loc = os.path.join(str(direct), str(direct))
+
         if ipaddress.ip_address(str(ip).strip()).version == 4:
+            
             command = ["nmap", "-n", str(params["Vulners"]), "--open", "--min-parallelism", "10", "-sV", "-Pn", str(
-                params["Timing"]), str(big_statement), str(params["PortTechnique"]), str(params["PortText"]), "-oA", str(loc), str(ip)]
+                params["Timing"]), str(params["Basic"]), str(params["Technique"]), str(params["Zombie"]), str(params["FTP"]), str(
+                params["UDP"]), str(params["SCTP_INIT"]), str(params["SCTP_COOKIE"]), str(params["HOST_DISCO"]), str(params["PortTechnique"]), str(params["PortText"]), "-oA", str(loc), str(ip)]
+            
         if ipaddress.ip_address(str(ip).strip()).version == 6:
-            command = ["nmap", "-6", "-n", str(params["Vulners"]), "--open", "--min-parallelism", "10", "-sV", "-Pn", str(params["Timing"]), str(
-                big_statement), str(params["PortTechnique"]), str(params["PortText"]), "-oA", str(loc), str(ip)]
+            
+            command = ["nmap", "-6", "-n", str(params["Vulners"]), "--open", "--min-parallelism", "10", "-sV", "-Pn", str(params["Timing"]), str(params["Basic"]), str(params["Technique"]), str(params["Zombie"]), str(params["FTP"]), str(
+                params["UDP"]), str(params["SCTP_INIT"]), str(params["SCTP_COOKIE"]), str(params["HOST_DISCO"]), str(params["PortTechnique"]), str(params["PortText"]), "-oA", str(loc), str(ip)]
+        
+        command = remove_empty(command)
+        
         process = subprocess.run(
             command, capture_output=True, text=True, cwd="results")
+        
         a = process.stdout
+        
         if "down" in str(a).split() or "down" in str(a):
             return (False, "port")
+        
         elif "Host is up" in str(a).split() or "Host is up" in str(a) or "1 host up" in str(a):
             return (True, "port")
+        
         else:
             return (False, "port")
 
 
 def convert(ip):
+    
     direct = str(ip).replace(":", "_")
     path = "results"
     files = glob.glob(path + "/*.csv")
@@ -487,6 +504,7 @@ def convert(ip):
 
     for filename in files:
         df = pd.read_csv(filename)
+        
         if os.stat(filename).st_size == 0 or df.empty or np.isnan(df.iloc[0]['PORT']):
             data = {'IP': [str(ip)], 'PORT': ['-'], 'PROTOCOL': ['-'], 'SERVICE': ['-'], 'VERSION': ['-'], 'STATE': ['IP is live but ports are closed/filtered'],
                     'TYPE': ['-'], 'CVSS': ['-'], 'ID': ['-'], 'IS EXPLOIT AVAILABLE?': ['-'], 'TIME WHEN SCAN FINISHED': ''}
@@ -516,20 +534,14 @@ def csv_xml_switch(nmap_xml_file, csv_output_file):
 
         for t in root.findall("finished"):
             timerec = t.get("timestr")
-        
+
         try:
             if timerec:
                 pass
             else:
                 timerec = '-'
         except:
-            time.sleep(2)
-            try:
-                for t in root.findall("finished"):
-                    timerec = t.get("timestr")
-            except Exception as e:
-                print(e)
-                timerec = '-'
+            timerec = '-'
 
         for host in root.findall("host"):
             ip_address = ""
@@ -592,4 +604,5 @@ if __name__ == '__main__':
             port = str(contents)
     else:
         port = "5000"
-    app.run(debug=False, port=port)
+    app.run(port=port)
+    # app.run(debug=False, port=port)
